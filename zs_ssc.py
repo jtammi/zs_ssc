@@ -3,7 +3,8 @@
 
 Purpose:      Multi-zone SED plotting with synchrotron and SSC.
 Requirements: Parameters in separate file zs_params.py.
-Version:      v.1.0 [20131029] 
+Version:      v.1.1 [20140208] Compare fits with --compare option (omit sum SED)
+              v.1.0 [20131029] Initial version
 Author:       Joni Tammi  (joni.tammi@aalto.fi)
 
 Details: Physical model and equations described in the paper 
@@ -19,6 +20,7 @@ corrected in this code based on private communication between J.T. and M.Z.
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+from itertools import cycle
 
 # Input parameters
 import zs_params as zs
@@ -49,6 +51,7 @@ class Calculated_SED:
         self.__Norm = params[4]
         self.__ls = ' '
 
+        # Linestyle: if .
         if sed_id == -1:
             self.__ls = '-k'
         elif sed_id == 0:
@@ -65,6 +68,9 @@ class Calculated_SED:
             self.__ls = ':g'
         else:
             self.__ls = ':k'
+
+    def set_ls(self,ls):
+        self.__ls = ls
 
     def calculate_SED(self):
         alpha   = self.__alpha
@@ -175,7 +181,7 @@ class Observations:
                             self.__nuF * self.__err - self.__nuF  ]
         self.__maxY = max( self.__nuF )
         self.__minY = min( self.__nuF )
-    
+   
     def get_ymax(self):
         return self.__maxY
     
@@ -203,11 +209,11 @@ def get_cnu(nu_min, nu_max, n_nu):
     """Create the logarithmic grid."""
     ## Frequency grids; border, difference, centre [b, d, c]
     bnu = nu_min * (nu_max/nu_min)**(np.arange(n_nu+1)/float(n_nu))
-    dnu = bnu[1:] - bnu[0:n_nu]
+    #dnu = bnu[1:] - bnu[0:n_nu]
     cnu = np.sqrt( bnu[1:] * bnu[0:n_nu] )
     return cnu
 
-def run_fits(datafile, plotrange, SED_fits, cnu, src_name):
+def run_fits(datafile, plotrange, SED_fits, cnu, src_name, compare):
     """This is the actual functional main program."""
 
     n_SEDs = np.shape(SED_fits)[0]  # How many SED fits we are making
@@ -218,14 +224,24 @@ def run_fits(datafile, plotrange, SED_fits, cnu, src_name):
 
     all_SEDs = []
     for i in range(0, n_SEDs):
-        # Create a new SED fit, store it the list of all SEDs
+        # Create a new SED fit, store it the list of all SEDs. 
+        # i determines the SED id, which determines the linestyle.
         all_SEDs.append( Calculated_SED(i,SED_fits[i], cnu) )
         all_SEDs[i].calculate_SED()
-    
-    # Create a total SED, and sum up the fluxes of all SEDs
-    sum_SED = Calculated_SED(-1, SED_fits[0], cnu)
-    for i in range(0, n_SEDs):
-        sum_SED.add_to_SED(all_SEDs[i].get_SED())
+
+    # If --compare argument was given, change the linestyles and 
+    # omit the sum_SED.
+    if compare == 1: # No sum SED
+        lines = ["-k","--k",":k","-.k"]
+        linecycler = cycle(lines)
+        for i in range(0, n_SEDs):
+            all_SEDs[i].set_ls(next(linecycler))
+    else:
+        # Create a total SED, and sum up the fluxes of all SEDs
+        sum_SED = Calculated_SED(-1, SED_fits[0], cnu)
+        for i in range(0, n_SEDs):
+            sum_SED.add_to_SED(all_SEDs[i].get_SED())
+
 
     ##-------------------------------------------------------------
     # Plotting
@@ -235,19 +251,23 @@ def run_fits(datafile, plotrange, SED_fits, cnu, src_name):
     obs_data.plot_observations()
 
     # Plot the SEDs from each components
+    ymax = -999.0
     for i in range(0, n_SEDs):
         all_SEDs[i].plot_SED()
+        ymax = max( ymax, all_SEDs[i].get_max() )
+     
+    if compare == 0: # we want the sum SED (default)
+        # Plot the total SED
+        sum_SED.plot_SED()
+        ymax = max( ymax, sum_SED.get_max() )
 
-    # Plot the total SED
-    sum_SED.plot_SED()
+    # Increase vertical plot range if data doesn't fit in the window 
+    new_ymin = min( plotrange[2], obs_data.get_ymin() )
+    new_ymax = max( plotrange[3], obs_data.get_ymax(), ymax )
 
     plt.title(src_name)
     plt.xlabel(r'$\nu$')
     plt.ylabel(r'$\nu F_\nu$')
-
-    # Increase vertical plot range if data doesn't fit in the window 
-    new_ymin = min( plotrange[2], obs_data.get_ymin() )
-    new_ymax = max( plotrange[3], obs_data.get_ymax(), sum_SED.get_max() )
 
     if (new_ymin < plotrange[2]):
         print "Lowering the y_min to fit all data inside the window."
@@ -272,17 +292,25 @@ def run_fits(datafile, plotrange, SED_fits, cnu, src_name):
 def main():
 
     # Ask for input file if one is not given
+    compare = 0
     if len(sys.argv) > 1: # or sys.argv[1] == "-h":
-        print ""
-        print "Usage:   python zs_ssc.py"
-        print "Give fit and data parameters in the file zs_params.py"
-        print ""
-        sys.exit()
-    else:
-        print "Close plotting window to exit."
-        cnu = get_cnu(zs.nu_min, zs.nu_max, zs.n_nu)
-        run_fits(zs.datafile, zs.plotrange, zs.SED_fit_parameters,\
-                 cnu,zs.src_name )
+        if sys.argv[1] == "--compare":
+            compare = 1
+            print "Plotting several SEDs in the same picture (no sum)."
+        else:
+            print "Unrecognised command / arguments: ", sys.argv[1] 
+            print ""
+            print "Usage:     python zs_ssc.py  [arguments]"
+            print "Arguments: --compare  Plot several SEDs in the same picture (no sum)"
+            print ""
+            print "Give fit and data parameters in the file zs_params.py"
+            print ""
+            sys.exit()
+    
+    print "Close plotting window to exit."
+    cnu = get_cnu(zs.nu_min, zs.nu_max, zs.n_nu)
+    run_fits(zs.datafile, zs.plotrange, zs.SED_fit_parameters,\
+                 cnu,zs.src_name, compare)
 
 				 
 main()

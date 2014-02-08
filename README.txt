@@ -2,7 +2,8 @@ zs_ssc: Zacharias & Schlickeiser (2012) SSC model.
 
 Purpose:      Multi-zone SED plotting with synchrotron and SSC.
 Requirements: Parameters in separate file zs_params.py.
-Version:      v.1.0 [20131029] 
+Version:      v.1.1 [20140208] Compare fits with --compare option (omit sum SED)
+              v.1.0 [20131029] Initial version
 Author:       Joni Tammi  (joni.tammi@aalto.fi)
 
 Details: Physical model and equations described in the paper 
