@@ -3,7 +3,8 @@
 
 Purpose:      Multi-zone SED plotting with synchrotron and SSC.
 Requirements: Parameters in separate file zs_params.py.
-Version:      v.1.1 [20140208] Compare fits with --compare option (omit sum SED)
+Version:      v.1.2 [20250508] Update to Python 3.
+              v.1.1 [20140208] Compare fits with --compare option (omit sum SED)
               v.1.0 [20131029] Initial version
 Author:       Joni Tammi  (joni.tammi@aalto.fi)
 
@@ -270,11 +271,11 @@ def run_fits(datafile, plotrange, SED_fits, cnu, src_name, compare):
     plt.ylabel(r'$\nu F_\nu$')
 
     if (new_ymin < plotrange[2]):
-        print "Lowering the y_min to fit all data inside the window."
+        print("Lowering the y_min to fit all data inside the window.")
         plotrange[2] = 10.0**np.floor(np.log10(new_ymin))
     
     if (new_ymax > plotrange[3]):
-        print "Increasing the y_max to fit all data inside the window."
+        print("Increasing the y_max to fit all data inside the window.")
         plotrange[3] = 10.0**np.ceil(np.log10(new_ymax))
 
     plt.axis(plotrange)
@@ -284,7 +285,7 @@ def run_fits(datafile, plotrange, SED_fits, cnu, src_name, compare):
     plt.savefig('pics/'+src_name+'.eps')
     #    plt.savefig('pics/'+src_name+'.png')
     #    plt.savefig('pics/'+src_name+'.eps')
-    print "Images (eps and png) saved in directory pics"
+    print ("Images (eps and png) saved in directory pics")
     plt.show() 
 
 ##############################################################################
@@ -296,18 +297,18 @@ def main():
     if len(sys.argv) > 1: # or sys.argv[1] == "-h":
         if sys.argv[1] == "--compare":
             compare = 1
-            print "Plotting several SEDs in the same picture (no sum)."
+            print("Plotting several SEDs in the same picture (no sum).")
         else:
-            print "Unrecognised command / arguments: ", sys.argv[1] 
-            print ""
-            print "Usage:     python zs_ssc.py  [arguments]"
-            print "Arguments: --compare  Plot several SEDs in the same picture (no sum)"
-            print ""
-            print "Give fit and data parameters in the file zs_params.py"
-            print ""
+            print("Unrecognised command / arguments: ", sys.argv[1])
+            print()
+            print("Usage:     python zs_ssc.py  [arguments]")
+            print("Arguments: --compare  Plot several SEDs in the same picture (no sum)")
+            print()
+            print("Give fit and data parameters in the file zs_params.py")
+            print()
             sys.exit()
     
-    print "Close plotting window to exit."
+    print("Close plotting window to exit.")
     cnu = get_cnu(zs.nu_min, zs.nu_max, zs.n_nu)
     run_fits(zs.datafile, zs.plotrange, zs.SED_fit_parameters,\
                  cnu,zs.src_name, compare)
